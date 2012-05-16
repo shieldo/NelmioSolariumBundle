@@ -11,19 +11,24 @@ Provides you with a `solarium.client` service in the Symfony2 DIC.
 
 ## Configuration
 
-Here is the default configuration:
+Here is the default configuration that will be used if you do not configure
+anything:
 
     nelmio_solarium:
+        client:
+            class: Solarium_Client
         adapter:
             class: Solarium_Client_Adapter_Http
             host: 127.0.0.1
             port: 8983
             path: /solr
+            timeout: 5
+            cores: ~
 
-At the very least you need to add this to your config:
-
-    nelmio_solarium:
-        adapter: ~
+You can define cores like this :
+            ...
+            cores:
+                cms: cms_core_path
 
 ## Installation
 
@@ -68,6 +73,12 @@ In your Controllers you can access the Solarium instance using the `solarium.cli
         $select = $client->createSelect();
         $select->setQuery('foo');
         $results = $client->select($select);
+```
+
+If you have define a core, you can access by config name like this :
+
+```php
+        $client = $this->get('solarium.client.cms');
 ```
 
 Then you can use `$results` in a `foreach` or twig `for` to display the results.
