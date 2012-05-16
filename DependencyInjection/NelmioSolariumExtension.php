@@ -14,7 +14,8 @@ namespace Nelmio\SolariumBundle\DependencyInjection;
 use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
+use Symfony\Component\DependencyInjection\Definition;
+use Symfony\Component\DependencyInjection\Loader\XmlFileLoader;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 
 /**
@@ -24,23 +25,64 @@ class NelmioSolariumExtension extends Extension
 {
     public function load(array $configs, ContainerBuilder $container)
     {
-        $processor = new Processor();
+        $loader = new XmlFileLoader($container, new FileLocator(array(__DIR__.'/../Resources/config')));
+        $loader->load('services.xml');
+
+        $processor     = new Processor();
         $configuration = new Configuration();
-        $config = $processor->processConfiguration($configuration, $configs);
-        $loader = new YamlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
+        $config        = $processor->processConfiguration($configuration, $configs);
 
-        if (!empty($config['adapter'])) {
-            $options = array(
-                'adapter'           => $config['adapter']['class'],
-                'adapteroptions'    => array(
-                    'host'  => $config['adapter']['host'],
-                    'port'  => $config['adapter']['port'],
-                    'path'  => $config['adapter']['path'],
-                ),
+        $container
+            ->setDefinition('solarium.client', new Definition($config['client']['class']))
+            ->setArguments(
+                array(
+                    $this->createOptions(
+                        $config['adapter']['class'],
+                        $config['adapter']['host'],
+                        $config['adapter']['port'],
+                        $config['adapter']['path'],
+                        null,
+                        $config['adapter']['timeout']
+                    )
+                )
             );
-            $container->setParameter('solarium.client.options', $options);
 
-            $loader->load('services.yml');
+        if (isset($config['adapter']['cores'])) {
+            foreach ($config['adapter']['cores'] as $name => $path) {
+                $this->loadCore($name, $path, $container, $config);
+            }
         }
+    }
+
+    protected function loadCore($name, $path, ContainerBuilder $container, array $config)
+    {
+        $container
+            ->setDefinition(sprintf('solarium.client.%s', $name), new Definition($config['client']['class']))
+            ->setArguments(
+                array(
+                    $this->createOptions(
+                        $config['adapter']['class'],
+                        $config['adapter']['host'],
+                        $config['adapter']['port'],
+                        $config['adapter']['path'],
+                        $name,
+                        $config['adapter']['timeout']
+                    )
+                )
+            );
+    }
+
+    protected function createOptions($class = null, $host = null, $port = null, $path = null, $core = null,  $timeout = null)
+    {
+        return array(
+            'adapter' => $class,
+            'adapteroptions' => array(
+                'host'    => $host,
+                'port'    => $port,
+                'path'    => $path,
+                'core'    => $core,
+                'timeout' => $timeout
+                )
+        );
     }
 }
