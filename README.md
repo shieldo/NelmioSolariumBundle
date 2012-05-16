@@ -25,7 +25,7 @@ anything:
             timeout: 5
             cores: ~
 
-You can define cares like this :
+You can define cores like this :
             ...
             cores:
                 cms: cms_core_path
